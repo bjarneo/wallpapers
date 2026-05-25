@@ -1,0 +1,134 @@
+{
+  "live/1280x540_aesthetic_kirokaze_live.gif": {
+    "color": "live",
+    "description": "Kirokaze. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "kirokaze"
+    ],
+    "theme": "aesthetic",
+    "title": "Kirokaze",
+    "tone": "live"
+  },
+  "live/1280x540_aesthetic_nord_car_live.gif": {
+    "color": "live",
+    "description": "Nord Car. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "nord",
+      "car"
+    ],
+    "theme": "aesthetic",
+    "title": "Nord Car",
+    "tone": "live"
+  },
+  "live/1920x1080_aesthetic_retro2_live.gif": {
+    "color": "live",
+    "description": "Retro2. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "retro2"
+    ],
+    "theme": "aesthetic",
+    "title": "Retro2",
+    "tone": "live"
+  },
+  "live/1920x1080_aesthetic_sunset_live.gif": {
+    "color": "live",
+    "description": "Sunset. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "sunset"
+    ],
+    "theme": "aesthetic",
+    "title": "Sunset",
+    "tone": "live"
+  },
+  "live/1920x1080_aesthetic_waves_live.gif": {
+    "color": "live",
+    "description": "Waves. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "waves"
+    ],
+    "theme": "aesthetic",
+    "title": "Waves",
+    "tone": "live"
+  },
+  "live/2160x1080_aesthetic_retro_city.gif": {
+    "color": "live",
+    "description": "Retro City. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "retro",
+      "city"
+    ],
+    "theme": "aesthetic",
+    "title": "Retro City",
+    "tone": "live"
+  },
+  "live/2560x1440_aesthetic_ruins_live.gif": {
+    "color": "live",
+    "description": "Ruins. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "ruins"
+    ],
+    "theme": "aesthetic",
+    "title": "Ruins",
+    "tone": "live"
+  },
+  "live/498x280_aesthetic_retro_live.gif": {
+    "color": "live",
+    "description": "Retro. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "retro"
+    ],
+    "theme": "aesthetic",
+    "title": "Retro",
+    "tone": "live"
+  },
+  "live/800x336_aesthetic_waterfall.gif": {
+    "color": "live",
+    "description": "Waterfall. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "waterfall"
+    ],
+    "theme": "aesthetic",
+    "title": "Waterfall",
+    "tone": "live"
+  },
+  "live/960x486_aesthetic_chill.gif": {
+    "color": "live",
+    "description": "Chill. Live wallpaper.",
+    "kind": "image",
+    "tags": [
+      "live",
+      "aesthetic",
+      "chill"
+    ],
+    "theme": "aesthetic",
+    "title": "Chill",
+    "tone": "live"
+  }
+}

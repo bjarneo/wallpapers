@@ -1,0 +1,19 @@
+.env
+.env.local
+*.log
+
+# Local Claude agent state
+.claude/
+
+# Built artifacts (built locally by scripts/build-data.sh, in CI by build-site.sh)
+dist/
+wallpapers.js
+live.js
+
+# Image storage (lives in Hetzner Object Storage, not git)
+cache/
+dark/
+light/
+live/
+
+# Per-image sidecar manifests are inside cache/, already covered above.
