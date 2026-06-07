@@ -1,0 +1,30 @@
+# Material Design (dark) reference ramp.
+# Used by scripts/generate-themes.py as the seed for the "material"
+# variant. The actual output palette is still wallpaper-derived; this
+# file only defines the lightness ramp + chroma envelope and semantic
+# ANSI hue positions that the generator targets.
+mode = "dark"
+
+accent = "#2196f3"
+cursor = "#fafafa"
+foreground = "#fafafa"
+background = "#212121"
+selection_foreground = "#fafafa"
+selection_background = "#2196f3"
+
+color0 = "#212121"
+color1 = "#f44336"
+color2 = "#4caf50"
+color3 = "#ffc107"
+color4 = "#2196f3"
+color5 = "#9c27b0"
+color6 = "#00bcd4"
+color7 = "#fafafa"
+color8 = "#616161"
+color9 = "#ef5350"
+color10 = "#66bb6a"
+color11 = "#ffd54f"
+color12 = "#42a5f5"
+color13 = "#ab47bc"
+color14 = "#26c6da"
+color15 = "#e0e0e0"
