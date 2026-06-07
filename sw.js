@@ -1,4 +1,4 @@
-const CACHE = 'wallpapers-v5';
+const CACHE = 'wallpapers-v6';
 const CACHEABLE = /\.(jpe?g|png|webp|gif|json|html|css|js)$/i;
 
 self.addEventListener('install', () => self.skipWaiting());
