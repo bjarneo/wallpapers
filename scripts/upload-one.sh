@@ -51,7 +51,7 @@ done
 
 # 3) the three packaged omarchy theme dirs (colors.toml + neovim.lua + bg symlink)
 OMARCHY_OUT="${OMARCHY_THEMES_OUT:-$HOME/Code/omarchy-themes}"
-for short in mono warm cool material aether; do
+for short in palette warm cool material aether; do
   td="${OMARCHY_OUT}/${BASE}-${short}"
   [ -d "$td" ] || continue
   rclone copy "$td" "${REMOTE}/omarchy-themes/${BASE}-${short}" "${ARGS[@]}" 2>&1 \

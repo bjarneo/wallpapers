@@ -11,7 +11,8 @@ outputs feel genuinely different:
     nord variant       cool-biased accent, blue-grey bg, low chroma cap
     gruvbox variant    warm-biased accent, brown-tinted bg, mid chroma cap
     material variant   chroma-maxed accent, deep bg, highest chroma cap
-    mono variant       greyscale ramp + single vivid wallpaper-derived accent
+    palette variant    pure wallpaper-derived palette + WCAG contrast enforcement
+                       (AAA fg vs bg, AA ANSI vs bg); see build_palette_variant
 
 ANSI color1..6 keep semantic hue identity (red, green, yellow, blue, magenta,
 cyan) via weighted blending against the closest wallpaper hue: a close match
@@ -47,19 +48,21 @@ OMARCHY = Path(os.environ.get(
     str(Path.home() / ".local/share/omarchy/themes"),
 ))
 
-SCHEMES = ("mono", "gruvbox", "nord", "material", "aether")
+SCHEMES = ("palette", "gruvbox", "nord", "material", "aether")
 
 # Reference colors.toml lookup. Most variants seed from an omarchy theme
 # that lives under ~/.local/share/omarchy/themes/<name>/colors.toml.
-# `material` and `mono` are project-local because Omarchy doesn't ship
-# matching themes - we provide the seeds under scripts/references/.
-# `aether` is special: it doesn't seed from a reference at all - we
-# shell out to `aether --generate` and copy its colors.toml verbatim.
+# `material` is project-local because Omarchy doesn't ship a matching
+# theme - we provide the seed under scripts/references/material/.
+# `aether` and `palette` are both special: they don't seed from a
+# reference. `aether` shells out to the Aether CLI; `palette` is built
+# directly from the wallpaper's `colors[]` array with WCAG contrast
+# enforcement (see build_palette_variant).
 LOCAL_REFERENCES = {
     "material": Path(__file__).resolve().parent / "references" / "material" / "colors.toml",
-    "mono":     Path(__file__).resolve().parent / "references" / "mono"     / "colors.toml",
 }
 AETHER_SCHEME = "aether"
+PALETTE_SCHEME = "palette"
 
 # Each variant's signature: how to score wallpaper colors for the
 # accent/selection-background slot, and the hue (deg) we use to tint
@@ -77,36 +80,28 @@ AETHER_SCHEME = "aether"
 #                   (the rest is wallpaper-dominant direction)
 VARIANT_SIG = {
     # c_cap is the per-variant chroma ceiling. Spreading these apart
-    # widens the Mono -> Cool -> Warm -> Material visual gap so each
-    # variant feels distinct (Mono near-grey, Cool meaningfully softer,
-    # Material the boldest / most saturated).
+    # widens the Cool -> Warm -> Material visual gap so each variant
+    # feels distinct (Cool meaningfully softer, Material the boldest /
+    # most saturated). Aether and Palette bypass this map entirely.
     "nord":     {"accent_pref": "cool",  "bg_tint_hue": 230.0, "c_cap": 20.0, "ref_blend": 0.55},
     "gruvbox":  {"accent_pref": "warm",  "bg_tint_hue":  40.0, "c_cap": 34.0, "ref_blend": 0.50},
     "material": {"accent_pref": "vivid", "bg_tint_hue": 210.0, "c_cap": 62.0, "ref_blend": 0.40},
-    # Mono: low overall chroma keeps every ANSI slot near-grey; the
-    # accent slot uses accent_c_cap so the wallpaper's most-saturated
-    # color survives as a single, prominent point of color.
-    "mono":     {"accent_pref": "vivid", "bg_tint_hue": 240.0, "c_cap":  5.0, "accent_c_cap": 48.0, "ref_blend": 0.55},
 }
 
 # Per-variant L* nudges applied on top of the base contrast bump in
 # apply_ramp_adjustments. Material pushes toward the high-contrast end
 # (darker bg, brighter fg); Cool pulls back so it stays the softest;
-# Warm sits in the middle. Mono uses its own deep bg + bright fg so
-# the greyscale ramp has the headroom to read crisp.
+# Warm sits in the middle. Aether and Palette bypass this map entirely.
 # Effective bg L per variant after the -5 base push + this nudge:
-#   Mono      ref 15 - 5 - 3   = ~7     (deep neutral grey)
 #   Warm      ref 16 - 5 - 0   = ~11    (mid-dark)
 #   Cool      ref 22 - 5 + 4   = ~21    (lightest dark)
 #   Material  ref 14 - 5 - 5   = ~4     (high-contrast, deepest)
 VARIANT_BG_NUDGE = {
-    "mono":     -3.0,
     "gruvbox":   0.0,
     "nord":     +4.0,
     "material": -5.0,
 }
 VARIANT_FG_NUDGE = {
-    "mono":     +3.0,
     "gruvbox":   0.0,
     "nord":     -4.0,
     "material": +5.0,
@@ -254,6 +249,54 @@ def hue_blend(h_a: float, w_a: float, h_b: float, w_b: float) -> float:
     if h < 0:
         h += 2.0 * math.pi
     return h
+
+
+# --------------------- WCAG contrast (sRGB) ---------------------
+# Used by the `palette` variant to guarantee the wallpaper-derived
+# slots meet AA / AAA contrast against the background, no matter what
+# colors the wallpaper happens to contain.
+
+WCAG_AAA = 7.0   # body text contrast
+WCAG_AA  = 4.5   # ANSI / accent contrast
+WCAG_AA_LARGE = 3.0
+
+
+def wcag_luminance(hex_: str) -> float:
+    r, g, b = hex_to_rgb(hex_)
+    return (
+        0.2126 * _srgb_to_linear(r)
+        + 0.7152 * _srgb_to_linear(g)
+        + 0.0722 * _srgb_to_linear(b)
+    )
+
+
+def wcag_contrast(h1: str, h2: str) -> float:
+    L1, L2 = wcag_luminance(h1), wcag_luminance(h2)
+    hi, lo = (L1, L2) if L1 > L2 else (L2, L1)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def push_for_contrast(hex_color: str, bg_hex: str, target: float, tone: str) -> str:
+    """Walk hex_color's L* until contrast vs bg meets target.
+
+    Dark themes push brighter (toward L*=100); light themes push darker
+    (toward L*=0). Hue and chroma are preserved so the color keeps its
+    wallpaper identity - only lightness moves. Returns the best-effort
+    result when L* hits the ceiling/floor without reaching target.
+    """
+    if wcag_contrast(hex_color, bg_hex) >= target:
+        return hex_color
+    L, a, b = hex_to_lab(hex_color)
+    step = 1.0 if tone == "dark" else -1.0
+    out = hex_color
+    for _ in range(120):
+        L = max(0.0, min(100.0, L + step))
+        out = lab_to_hex(L, a, b)
+        if wcag_contrast(out, bg_hex) >= target:
+            return out
+        if L <= 0.0 or L >= 100.0:
+            return out
+    return out
 
 
 # --------------------- variant-specific picking ---------------------
@@ -531,6 +574,142 @@ def build_variant(scheme_name: str, slots_adjusted, palette_lch, tone: str) -> l
     return out
 
 
+# --------------------- palette variant (WCAG-enforced) ---------------------
+
+def build_palette_variant(palette_lch: list, tone: str) -> list[tuple[str, str]]:
+    """Build a fully wallpaper-derived theme with WCAG contrast guarantees.
+
+    Unlike the reference-seeded variants (which inherit L* / chroma from
+    Nord / Gruvbox / Material), every slot here is pulled from the
+    wallpaper's own colors[]. Lightness is then nudged per-slot until
+    contrast against bg meets:
+
+      foreground / cursor / color15 / sel_fg   >= 7.0   (WCAG AAA)
+      accent / sel_bg / ANSI 1-6 / color7      >= 4.5   (WCAG AA normal)
+      color8 (subtle ui)                       >= 3.0   (WCAG AA large)
+
+    Hue and chroma are preserved during the lightness push, so the
+    wallpaper's color identity survives even when contrast forces a
+    large L* shift.
+    """
+    dark = (tone == "dark")
+    chromatic = [p for p in palette_lch if p[1] >= CHROMA_THRESHOLD_PALETTE]
+
+    # ---- background: darkest (dark) / lightest (light) palette color,
+    # clamped to a deep / pale band so a bright wallpaper still yields a
+    # readable bg. Chroma capped so the bg doesn't look noisy.
+    if dark:
+        bg_pick = min(palette_lch, key=lambda p: p[0])
+        bg_L = min(bg_pick[0], 9.0)
+    else:
+        bg_pick = max(palette_lch, key=lambda p: p[0])
+        bg_L = max(bg_pick[0], 95.0)
+    bg = lch_to_hex(bg_L, min(bg_pick[1], 10.0), bg_pick[2])
+
+    # ---- foreground: lightest (dark) / darkest (light), low chroma so
+    # large blocks of text don't strain eyes, then pushed for AAA.
+    if dark:
+        fg_pick = max(palette_lch, key=lambda p: p[0])
+    else:
+        fg_pick = min(palette_lch, key=lambda p: p[0])
+    fg = lch_to_hex(fg_pick[0], min(fg_pick[1], 6.0), fg_pick[2])
+    fg = push_for_contrast(fg, bg, WCAG_AAA, tone)
+
+    # ---- accent: most chromatic palette color, AA enforced.
+    if chromatic:
+        accent_pick = max(chromatic, key=lambda p: p[1])
+    else:
+        accent_pick = fg_pick
+    accent = lch_to_hex(*accent_pick)
+    accent = push_for_contrast(accent, bg, WCAG_AA, tone)
+
+    # ---- ANSI 1-6: per-slot semantic hue (red/green/yellow/blue/
+    # magenta/cyan). Pick the palette color closest in hue; if the
+    # closest is more than 60deg away (e.g. an all-purple wallpaper
+    # has nothing near green / yellow / red), synthesize the slot at
+    # the canonical hue with a chroma matched to the palette's overall
+    # vividness so syntax highlighting stays semantically distinct.
+    # Each slot is then L*-pushed to AA vs bg.
+    PALETTE_HUE_GATE = math.radians(60.0)
+    if chromatic:
+        avg_chroma = sum(p[1] for p in chromatic) / len(chromatic)
+        synth_C = max(18.0, min(32.0, avg_chroma * 0.75))
+    else:
+        synth_C = 6.0
+    ansi: dict[str, str] = {}
+    for slot, hue_deg in ANSI_SEMANTIC_HUE_DEG.items():
+        if int(slot.removeprefix("color")) >= 9:
+            continue  # bright siblings handled in the next pass
+        h_target = math.radians(hue_deg)
+        if chromatic:
+            picked = min(chromatic, key=lambda p: hue_dist(p[2], h_target))
+            if hue_dist(picked[2], h_target) <= PALETTE_HUE_GATE:
+                slot_C = picked[1]
+                slot_h = picked[2]
+                start_L = picked[0]
+            else:
+                # Fall back to the canonical hue so red != green != yellow
+                # even on a monochromatic wallpaper. L* still anchored to
+                # the picked color so the slot fits the wallpaper's range.
+                slot_C = synth_C
+                slot_h = h_target
+                start_L = picked[0]
+        else:
+            slot_C = synth_C
+            slot_h = h_target
+            start_L = 60.0 if dark else 40.0
+        start_L = max(20.0, min(85.0, start_L))
+        candidate = lch_to_hex(start_L, slot_C, slot_h)
+        ansi[slot] = push_for_contrast(candidate, bg, WCAG_AA, tone)
+
+    # ---- ANSI 9-14: brighter (dark) / darker (light) siblings of 1-6.
+    # Same hue/chroma, L* shifted by 12, re-pushed for AA.
+    for i in range(9, 15):
+        sibling = ansi[f"color{i - 8}"]
+        L, a, b = hex_to_lab(sibling)
+        L2 = min(100.0, L + 12.0) if dark else max(0.0, L - 12.0)
+        bright = lab_to_hex(L2, a, b)
+        ansi[f"color{i}"] = push_for_contrast(bright, bg, WCAG_AA, tone)
+
+    # ---- greyscale slots derived from the bg-fg ramp.
+    bg_L_actual = hex_to_lab(bg)[0]
+    fg_L_actual = hex_to_lab(fg)[0]
+    if dark:
+        color0 = shift_L(bg, +2.0)               # just above bg
+        color7 = push_for_contrast(shift_L(fg, -10.0), bg, WCAG_AA, tone)
+        color8 = push_for_contrast(
+            lab_to_hex(bg_L_actual + (fg_L_actual - bg_L_actual) * 0.45, 0.0, 0.0),
+            bg, WCAG_AA_LARGE, tone,
+        )
+        color15 = push_for_contrast(shift_L(fg, +6.0), bg, WCAG_AAA, tone)
+    else:
+        color0 = shift_L(bg, -2.0)
+        color7 = push_for_contrast(shift_L(fg, +10.0), bg, WCAG_AA, tone)
+        color8 = push_for_contrast(
+            lab_to_hex(bg_L_actual + (fg_L_actual - bg_L_actual) * 0.55, 0.0, 0.0),
+            bg, WCAG_AA_LARGE, tone,
+        )
+        color15 = push_for_contrast(shift_L(fg, -6.0), bg, WCAG_AAA, tone)
+
+    out = [
+        ("background", bg),
+        ("foreground", fg),
+        ("cursor", fg),
+        ("accent", accent),
+        ("selection_foreground", bg if dark else fg),
+        ("selection_background", accent),
+        ("color0", color0),
+        ("color7", color7),
+        ("color8", color8),
+        ("color15", color15),
+    ]
+    for i in range(1, 7):
+        out.append((f"color{i}", ansi[f"color{i}"]))
+    for i in range(9, 15):
+        out.append((f"color{i}", ansi[f"color{i}"]))
+    return out
+
+
 def write_toml(path: Path, slots: list[tuple[str, str]], mode: str = "dark") -> None:
     """Write a colors.toml using Omarchy's expanded format.
 
@@ -660,10 +839,11 @@ def write_toml(path: Path, slots: list[tuple[str, str]], mode: str = "dark") -> 
 def load_schemes():
     schemes_raw = {}
     for name in SCHEMES:
-        # aether doesn't use the reference-scheme algorithm at all; we
-        # invoke the aether CLI per wallpaper and pull its colors.toml
-        # straight through. Skip the static reference here.
-        if name == AETHER_SCHEME:
+        # aether and palette don't use the reference-scheme algorithm.
+        # aether shells out to the Aether CLI; palette is built directly
+        # from the wallpaper's colors[] with WCAG enforcement. Skip the
+        # static reference for both.
+        if name in (AETHER_SCHEME, PALETTE_SCHEME):
             continue
         # Project-local references (e.g. `material`) take precedence so
         # they're not silently shadowed by a same-named user-installed
@@ -773,10 +953,19 @@ def process_entry(rel: str, entry: dict, schemes_raw: dict, aether_only: bool = 
 
     # aether is special: shell out to the Aether CLI rather than using
     # the LCH-remap algorithm. Its output ships verbatim (just prefixed
-    # with the mode line) as the 5th variant.
+    # with the mode line).
     aether_path = base_dir / AETHER_SCHEME / "colors.toml"
     if generate_aether_toml(src, aether_path, tone):
         record(AETHER_SCHEME, aether_path)
+        n += 1
+
+    # palette: pure wallpaper-derived slots with WCAG contrast pushing.
+    # Bypasses both the reference ramp and the aether CLI.
+    if not aether_only:
+        palette_slots = build_palette_variant(palette_lch, tone)
+        palette_path = base_dir / PALETTE_SCHEME / "colors.toml"
+        write_toml(palette_path, palette_slots, mode=tone)
+        record(PALETTE_SCHEME, palette_path)
         n += 1
 
     entry["themes"] = themes_field

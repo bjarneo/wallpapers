@@ -9,18 +9,18 @@ scheme:
         neovim.lua                        (rendered Aether template)
         backgrounds/01-<basename>.<ext>   (symlink to source wallpaper)
 
-`<short>` is `mono`, `warm`, `cool`, `material` or `aether`. After packaging
-we update each sidecar's `themes` field to a rich metadata dict the site
-(and the omarchy theme browser) can read directly:
+`<short>` is `palette`, `warm`, `cool`, `material` or `aether`. After
+packaging we update each sidecar's `themes` field to a rich metadata dict
+the site (and the omarchy theme browser) can read directly:
 
     "themes": {
-      "mono": {
-        "name": "glass-sphere-mono",
-        "scheme": "mono",
-        "path": "omarchy-themes/glass-sphere-mono",
-        "colors_toml":  "omarchy-themes/glass-sphere-mono/colors.toml",
-        "neovim_lua":   "omarchy-themes/glass-sphere-mono/neovim.lua",
-        "background":   "omarchy-themes/glass-sphere-mono/backgrounds/01-glass-sphere.jpg",
+      "palette": {
+        "name": "glass-sphere-palette",
+        "scheme": "palette",
+        "path": "omarchy-themes/glass-sphere-palette",
+        "colors_toml":  "omarchy-themes/glass-sphere-palette/colors.toml",
+        "neovim_lua":   "omarchy-themes/glass-sphere-palette/neovim.lua",
+        "background":   "omarchy-themes/glass-sphere-palette/backgrounds/01-glass-sphere.jpg",
         "colors": { "background": "#...", ..., "color0": "#...", ... }
       },
       ...
@@ -62,19 +62,20 @@ OMARCHY_THEMES = Path(os.environ.get(
 # Variants are named after their character, not the reference scheme that
 # seeded them. The output palettes are derived from each wallpaper's own
 # colors, so the labels describe what the user actually sees:
-#   mono     -> greyscale ramp + single vivid accent (seeded by local mono ref)
+#   palette  -> pure wallpaper colors with WCAG contrast enforcement
 #   warm     -> warm-biased accent (seeded by gruvbox)
 #   cool     -> cool-biased, muted (seeded by nord)
 #   material -> highest contrast, boldest saturation (seeded by Material Design)
+#   aether   -> aether CLI output (wallpaper-derived, no contrast guarantees)
 SHORT_NAMES = {
-    "mono":     "mono",
+    "palette":  "palette",
     "gruvbox":  "warm",
     "nord":     "cool",
     "material": "material",
     "aether":   "aether",
 }
 SHORT_LABEL = {
-    "mono":     "Mono",
+    "palette":  "Palette",
     "warm":     "Warm",
     "cool":     "Cool",
     "material": "Material",

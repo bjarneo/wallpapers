@@ -2,9 +2,9 @@
 """Publish wallpapers.json to the omarchy-themes site.
 
 The Omarchy Themes site is wallpaper-keyed: one card per wallpaper, with
-the variants (mono, gruvbox, nord, material, aether) surfaced inside the
-lightbox. That schema is identical to the wallpaper-keyed manifest the
-Wallpapers repo already produces, so we just propagate it forward.
+the variants (palette, gruvbox, nord, material, aether) surfaced inside
+the lightbox. That schema is identical to the wallpaper-keyed manifest
+the Wallpapers repo already produces, so we just propagate it forward.
 
 Reads:  /home/bjarneo/Wallpapers/wallpapers.json (built by merge-sidecars.py)
 Writes: ~/Code/omarchy-themes/wallpapers.json
